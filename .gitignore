@@ -2,3 +2,4 @@
 **/obj
 **/.vs
 /ShopifyUnhold.Cli/config.json
+*.user

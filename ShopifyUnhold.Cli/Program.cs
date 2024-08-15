@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using ShopifyUnhold.Exceptions;
 using System.Reflection;
+using System.Text.Json;
 
 namespace ShopifyUnhold.Cli;
 
@@ -36,14 +37,16 @@ public static class Program
 
             // Parse ranges of input order names
             var names = Range.Parse(args).ToList();
-            logger.LogInformation("Parsed {namesCount} order names", names.Count);
+            logger.LogInformation("Parsed {namesCount} order names:", names.Count);
+            logger.LogInformation("{names}", JsonSerializer.Serialize(names));
+
             if (names.Count is 0)
             {
                 Console.WriteLine("No orders input, exiting");
                 return;
             }
-            Console.WriteLine($"Total of {names.Count} orders");
-
+            Console.WriteLine($"Total of {names.Count} orders input");
+            
             // Configure GraphQL
             var http = new HttpClient();
             http.SetShopifyToken(config.Token);
@@ -56,20 +59,21 @@ public static class Program
             {
                 // Find fulfillment orders based on input order names
                 var finder = new FulfillmentOrderFinder(client, factory.CreateLogger<FulfillmentOrderFinder>());
-                var fulfillmentOrders = await finder.Find(names, config.Location);
+                var results = await finder.Find(names, config.Location);
+                var orderCount = results.FulfillmentOrders.Count;
+                
+                Console.WriteLine($"Found {orderCount} fulfillment orders");
+                if (results.MissingNames.Count > 0)
+                {
+                    Console.WriteLine("Some order numbers could not be correlated with fulfillment orders:");
+                    foreach(var name in results.MissingNames) Console.WriteLine(name);
+                }
 
-                Console.WriteLine($"Found {fulfillmentOrders.Count()} fulfillment orders");
-
+                // Request to unhold the found orders
                 var unholder = new Unholder(client, factory.CreateLogger<Unholder>());
-                var unheld = await unholder.Unhold(fulfillmentOrders);
+                await unholder.Unhold(results.FulfillmentOrders);
 
-                Console.WriteLine($"Removed hold on {unheld} orders");
-            }
-            catch (FulfillmentOrdersNotFoundException e)
-            {
-                Console.WriteLine(e.Message + ":");
-                foreach (var name in e.Names) Console.WriteLine(name);
-                return;
+                Console.WriteLine($"Removed hold on {orderCount} orders");
             }
             catch (UserErrorsException e)
             {
@@ -77,14 +81,6 @@ public static class Program
                 foreach (var error in e.Errors)
                 {
                     Console.WriteLine(error.Message);
-                }
-            }
-            catch (UnmodifiedOrdersException e)
-            {
-                Console.WriteLine(e.Message + ":");
-                foreach (var order in e.Orders)
-                {
-                    Console.WriteLine(order);
                 }
             }
         }

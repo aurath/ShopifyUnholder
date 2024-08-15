@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ShopifyUnhold.Cli": {
+      "commandName": "Project",
+      "commandLineArgs": "\"#A18335-#A18338\""
+    }
+  }
+}

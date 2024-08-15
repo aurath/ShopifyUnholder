@@ -39,6 +39,4 @@ The following permissions are needed on your Shopify app token:
 
 The app uses the `manualHoldsFulfillmentOrders` query to pull a list of all held orders for the location provided in the config file. It then matches order name (the human friendly order number I.E. #1001) to fulfillment order ID. If orders matching the provided names can't be found, it exits here after printing those order numbers to console.
 
-It uses the `fulfillmentOrdersReleaseHolds` mutation to request the discovered fulfillment orders be unheld. It gets a job ID back, so it polls the job using the `job` query until the job finishes and it gets a list of changed orders.
-
-It then correlates the returned list to the requested list to see if any of the orders were not modified. If so, it prints those order numbers to the console before exiting.
+It uses the `fulfillmentOrdersReleaseHolds` mutation to request the discovered fulfillment orders be unheld.
