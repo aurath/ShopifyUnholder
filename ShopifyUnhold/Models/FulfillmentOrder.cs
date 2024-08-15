@@ -14,20 +14,11 @@ public class FulfillmentOrder
 
     [JsonPropertyName("orderName")]
     public required string OrderName { get; set; }
-
-    [JsonPropertyName("assignedLocation")]
-    public required FulfillmentLocation AssignedLocation { get; set; }
 }
 
 public class FulfillmentOrdersResponse
 {
     [JsonPropertyName("fulfillmentOrders")]
-    public required FulfillmentOrderConnection FulfillmentOrders { get; set; }
-}
-
-public class ManualHoldsFulfillmentOrdersResponse
-{
-    [JsonPropertyName("manualHoldsFulfillmentOrders")]
     public required FulfillmentOrderConnection FulfillmentOrders { get; set; }
 }
 
@@ -47,10 +38,4 @@ public class PageInfo
 
     [JsonPropertyName("endCursor")]
     public string? EndCursor { get; set; }
-}
-
-public class FulfillmentLocation
-{
-    [JsonPropertyName("name")]
-    public required string Name { get; set; }
 }

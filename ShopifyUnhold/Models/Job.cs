@@ -9,9 +9,6 @@ public class Job
 
     [JsonPropertyName("done")]
     public required bool Done { get; set; }
-
-    [JsonPropertyName("query")]
-    public FulfillmentOrdersResponse? Query { get; set;}
 }
 
 public class JobResponse

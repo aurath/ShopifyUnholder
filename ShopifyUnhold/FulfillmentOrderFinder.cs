@@ -11,7 +11,7 @@ public class FulfillmentOrderFinder(IGraphQLClient client, ILogger<FulfillmentOr
     private readonly IGraphQLClient _client = client ?? throw new ArgumentNullException(nameof(client));
     private readonly ILogger<FulfillmentOrderFinder> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-    public async Task<FulfillmentOrderResults> Find(IEnumerable<string> names, string locationName)
+    public async Task<FulfillmentOrderResults> Find(IEnumerable<string> names, string locationId)
     {
         // Do/while loop handles pagination, each chunk of orders is appended to the list
         FulfillmentOrderConnection data;
@@ -19,7 +19,7 @@ public class FulfillmentOrderFinder(IGraphQLClient client, ILogger<FulfillmentOr
         string? cursor = null;
         do
         {
-            data = await GetOrdersPage(cursor);
+            data = await GetOrdersPage(cursor, locationId);
             _logger.LogInformation("Got page of held orders, size: {pageSize}", data.Nodes.Count);
             cursor = data.PageInfo.EndCursor;
             orders.AddRange(data.Nodes);
@@ -29,8 +29,7 @@ public class FulfillmentOrderFinder(IGraphQLClient client, ILogger<FulfillmentOr
         _logger.LogInformation("Total orders found: {orderCount}", orders.Count);
 
         // Pull out the order IDs with the names we are looking for
-        var ordersAtLocation = orders.Where(x => x.AssignedLocation.Name == locationName);
-        var matchedOrderIds = ordersAtLocation
+        var matchedOrderIds = orders
             .IntersectBy(names, x => x.OrderName)
             .Select(x => x.Id)
             .ToList();
@@ -39,7 +38,7 @@ public class FulfillmentOrderFinder(IGraphQLClient client, ILogger<FulfillmentOr
 
         // Check for missing names
         var missingNames = names
-            .Except(ordersAtLocation.Select(x => x.OrderName))
+            .Except(orders.Select(x => x.OrderName))
             .ToList();
 
         if (missingNames.Count is not 0)
@@ -51,19 +50,16 @@ public class FulfillmentOrderFinder(IGraphQLClient client, ILogger<FulfillmentOr
         return new FulfillmentOrderResults(matchedOrderIds, missingNames);
     }
 
-    private async Task<FulfillmentOrderConnection> GetOrdersPage(string? cursor)
+    private async Task<FulfillmentOrderConnection> GetOrdersPage(string? cursor, string locationId)
     {
         var request = new GraphQLRequest
         {
             Query = @"
                 query ($cursor: String) {
-	                manualHoldsFulfillmentOrders(first: 250, after: $cursor){
+	                fulfillmentOrders(first: 250, after: $cursor, query: ""status:ON_HOLD AND assigned_location_id:" + locationId + @"""){
 		                nodes {
 			                id
 			                orderName
-                            assignedLocation {
-                                name
-                            }
 		                }
 		                pageInfo {
 			                hasNextPage
@@ -74,7 +70,7 @@ public class FulfillmentOrderFinder(IGraphQLClient client, ILogger<FulfillmentOr
             Variables = new { cursor }
         };
 
-        var response = await _client.SendQueryAsync<ManualHoldsFulfillmentOrdersResponse>(request);
+        var response = await _client.SendQueryAsync<FulfillmentOrdersResponse>(request);
         return response.Data.FulfillmentOrders;
     }
 
